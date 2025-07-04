@@ -1,23 +1,25 @@
-# Build Stage
-FROM golang:1.22-alpine AS builder
+# Stage 1: Build
+FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-COPY go.mod ./
-COPY go.sum ./
+# Copy go.mod & go.sum first
+COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy source code
 COPY . .
 
-RUN go build -o myapp
+# Build binary ชื่อ main
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
 
-# Run Stage
-FROM alpine:latest
+# Stage 2: Run
+FROM gcr.io/distroless/static
 
-WORKDIR /root/
+WORKDIR /
 
-COPY --from=builder /app/myapp .
+COPY --from=builder /app/main /server
 
-EXPOSE 8080
+EXPOSE 3004
 
-CMD ["./myapp"]
+ENTRYPOINT ["/server"]
